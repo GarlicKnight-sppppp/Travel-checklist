@@ -5,13 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
-<title>旅行清单</title>
+<title>我的旅行</title>
 <style>
   :root{
     --bg:#f6f7f9; --card:#ffffff; --line:#e8ebef;
     --text:#1a1d21; --muted:#8b939c;
     --solid:#1e293b; --solid-text:#ffffff;
     --hover:#f1f3f6;
+    --fab:#2563eb; --fab-text:#ffffff;
+    --fab-shadow:0 6px 20px rgba(37,99,235,.35);
+    --accent:#2563eb;
+    --grad:linear-gradient(135deg,#2563eb,#06b6d4);
+    --grad-dark:linear-gradient(135deg,#334155,#475569);
+    --glow:radial-gradient(ellipse at 50% 0%, rgba(37,99,235,.10), transparent 65%);
   }
   @media (prefers-color-scheme: dark){
     :root{
@@ -19,6 +25,11 @@
       --text:#e2e8f0; --muted:#94a3b8;
       --solid:#475569; --solid-text:#f1f5f9;
       --hover:#334155;
+      --fab:#3b82f6; --fab-text:#ffffff;
+      --fab-shadow:0 6px 20px rgba(0,0,0,.5);
+      --accent:#60a5fa;
+      --grad:linear-gradient(135deg,#3b82f6,#22d3ee);
+      --glow:radial-gradient(ellipse at 50% 0%, rgba(59,130,246,.14), transparent 65%);
     }
   }
 
@@ -26,32 +37,303 @@
   html{-webkit-text-size-adjust:100%}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
-    background:var(--bg);color:var(--text);line-height:1.5;
+    background-color:var(--bg);
+    background-image:radial-gradient(circle, rgba(15,23,42,.045) 1px, transparent 1px);
+    background-size:22px 22px;
+    color:var(--text);line-height:1.5;
     -webkit-font-smoothing:antialiased;
     overscroll-behavior-y:none;
   }
+  @media (prefers-color-scheme: dark){
+    body{background-image:radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1px)}
+  }
+  body.picker-open{overflow:hidden}
   button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
   input,select,textarea{font-family:inherit;font-size:16px;color:inherit}
 
-  /* ---------- 顶部 ---------- */
+  .screen{display:none}
+
+  /* =========================================================
+     行程选择页
+     ========================================================= */
+  #pickerScreen{
+    position:fixed;inset:0;z-index:40;
+    flex-direction:column;
+    background-color:var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(37,99,235,.16), transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(139,92,246,.14), transparent 45%),
+      radial-gradient(circle, rgba(15,23,42,.045) 1px, transparent 1px);
+    background-size:auto, auto, 22px 22px;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    overflow:hidden;
+  }
+  @media (prefers-color-scheme: dark){
+    #pickerScreen{
+      background-image:
+        radial-gradient(circle at 15% 0%, rgba(59,130,246,.20), transparent 45%),
+        radial-gradient(circle at 85% 100%, rgba(168,85,247,.16), transparent 45%),
+        radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1px);
+    }
+  }
+  #pickerScreen.active{display:flex}
+
+  .picker-head{
+    flex:0 0 auto;
+    padding:22px 24px 6px;
+    max-width:820px;margin:0 auto;width:100%;
+  }
+  .picker-brand{
+    display:flex;align-items:center;gap:14px;
+  }
+  .brand-icon{
+    width:46px;height:46px;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    font-size:24px;line-height:1;
+    border-radius:14px;
+    background:var(--grad);
+    box-shadow:0 8px 22px -6px rgba(37,99,235,.45);
+  }
+  .brand-text h1{
+    font-size:20px;font-weight:700;letter-spacing:-.02em;
+  }
+  .brand-text p{
+    font-size:13px;color:var(--muted);margin-top:1px;
+  }
+
+  .picker-main{
+    flex:1;min-height:0;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+
+  /* --- 卡片轮播 --- */
+  .carousel-wrap{
+    width:100%;
+    display:flex;flex-direction:column;gap:22px;
+  }
+  .trip-carousel{
+    display:flex;gap:16px;
+    overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;
+    padding:10px calc(50% - 145px);
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .trip-carousel::-webkit-scrollbar{display:none}
+
+  .trip-card{
+    flex:0 0 290px;
+    height:min(400px,52vh);
+    min-height:280px;
+    scroll-snap-align:center;
+    border-radius:26px;
+    padding:26px;
+    color:#fff;
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    box-shadow:0 24px 48px -14px rgba(0,0,0,.35);
+    transition:transform .38s cubic-bezier(.34,1.2,.64,1),
+               opacity .3s, box-shadow .3s;
+    transform:scale(.88);
+    opacity:.5;
+    cursor:pointer;
+    -webkit-user-select:none;user-select:none;
+  }
+  .trip-card.active{
+    transform:scale(1);
+    opacity:1;
+    box-shadow:0 30px 60px -14px rgba(0,0,0,.45);
+  }
+  .trip-card::before{
+    content:'';position:absolute;top:-70px;right:-70px;
+    width:220px;height:220px;border-radius:50%;
+    background:rgba(255,255,255,.13);
+    pointer-events:none;
+  }
+  .trip-card::after{
+    content:'';position:absolute;bottom:-100px;left:-50px;
+    width:200px;height:200px;border-radius:50%;
+    background:rgba(255,255,255,.08);
+    pointer-events:none;
+  }
+  .card-top{
+    position:relative;z-index:1;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .card-emoji{
+    font-size:34px;line-height:1;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.22));
+  }
+  .card-count{
+    font-size:11px;font-weight:700;
+    padding:4px 10px;border-radius:99px;
+    background:rgba(255,255,255,.25);
+    -webkit-backdrop-filter:blur(8px);
+    backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.3);
+  }
+  .card-body{
+    position:relative;z-index:1;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .card-title{
+    font-size:24px;font-weight:700;
+    line-height:1.28;letter-spacing:-.02em;
+    text-shadow:0 2px 10px rgba(0,0,0,.15);
+    word-break:break-word;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .card-range{
+    font-size:13px;font-weight:500;opacity:.92;
+    display:inline-flex;align-items:center;gap:5px;
+  }
+  .card-range::before{content:'📅';font-size:12px}
+
+  .picker-dots{
+    display:flex;justify-content:center;align-items:center;gap:7px;
+    padding:0 24px;height:14px;
+  }
+  .picker-dots .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--muted);opacity:.35;
+    transition:all .3s cubic-bezier(.34,1.2,.64,1);
+  }
+  .picker-dots .dot.active{
+    width:22px;border-radius:4px;
+    background:var(--grad);opacity:1;
+  }
+
+  /* --- 空状态 --- */
+  .picker-empty{
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:18px;text-align:center;
+    padding:40px 24px;width:100%;
+  }
+  .empty-add-btn{
+    position:relative;
+    width:118px;height:118px;
+    border-radius:50%;border:none;
+    background:var(--grad);color:#fff;
+    font-size:58px;font-weight:200;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    padding-bottom:6px;
+    box-shadow:0 18px 44px -10px rgba(37,99,235,.55);
+    transition:transform .18s;
+  }
+  .empty-add-btn::before{
+    content:'';position:absolute;inset:-9px;
+    border-radius:50%;
+    border:2px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+    animation:spinSlow 22s linear infinite;
+    pointer-events:none;
+  }
+  .empty-add-btn::after{
+    content:'';position:absolute;inset:-4px;
+    border-radius:50%;
+    border:2px solid var(--accent);
+    opacity:0;
+    animation:pulseBig 2.8s ease-out infinite;
+    pointer-events:none;
+  }
+  @keyframes spinSlow{to{transform:rotate(360deg)}}
+  @keyframes pulseBig{
+    0%{transform:scale(.95);opacity:.5}
+    70%{transform:scale(1.28);opacity:0}
+    100%{transform:scale(1.28);opacity:0}
+  }
+  .empty-add-btn:active{transform:scale(.94)}
+  .picker-empty h2{
+    font-size:19px;font-weight:700;letter-spacing:-.01em;
+  }
+  .picker-empty p{
+    font-size:14px;color:var(--muted);
+  }
+
+  /* --- 底部按钮 --- */
+  .picker-foot{
+    flex:0 0 auto;
+    padding:12px 24px 28px;
+    display:flex;flex-direction:column;gap:10px;
+    max-width:460px;margin:0 auto;width:100%;
+  }
+  .enter-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    border:none;background:var(--grad);color:#fff;
+    font-size:16px;font-weight:600;
+    padding:16px;border-radius:16px;
+    box-shadow:0 14px 30px -8px rgba(37,99,235,.5);
+    transition:transform .15s, box-shadow .15s;
+  }
+  .enter-btn:active{
+    transform:scale(.97);
+    box-shadow:0 6px 16px -4px rgba(37,99,235,.5);
+  }
+  .enter-arrow{font-size:18px;transition:transform .2s}
+  .enter-btn:active .enter-arrow{transform:translateX(4px)}
+  .new-trip-btn{
+    border:1px dashed var(--line);background:transparent;
+    color:var(--muted);font-size:14px;font-weight:500;
+    padding:13px;border-radius:14px;
+    transition:.15s;
+  }
+  .new-trip-btn:active{
+    background:var(--hover);
+    border-color:var(--accent);color:var(--accent);
+  }
+
+  /* =========================================================
+     详情页
+     ========================================================= */
+  #detailScreen.active{display:block}
+
   .topbar{
     position:sticky;top:0;z-index:20;
-    background:var(--card);border-bottom:1px solid var(--line);
+    background:rgba(255,255,255,.82);
+    -webkit-backdrop-filter:blur(14px) saturate(180%);
+    backdrop-filter:blur(14px) saturate(180%);
+    border-bottom:1px solid var(--line);
     padding-top:env(safe-area-inset-top,0px);
   }
-  .topbar-row{
-    max-width:820px;margin:0 auto;
-    padding:10px 14px 4px;
-    display:flex;align-items:center;gap:8px;
+  @media (prefers-color-scheme: dark){
+    .topbar{background:rgba(30,41,59,.82)}
   }
-  .title{
+  .topbar::before{
+    content:'';position:absolute;inset:0;
+    background:var(--glow);pointer-events:none;
+  }
+  .topbar::after{
+    content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
+    background:linear-gradient(90deg, transparent, rgba(37,99,235,.35), transparent);
+    pointer-events:none;
+  }
+  .topbar-row{
+    position:relative;
+    max-width:820px;margin:0 auto;
+    padding:10px 12px 4px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .trip-switch{
     flex:1;min-width:0;
+    display:flex;align-items:center;gap:6px;
+    border:none;background:none;
+    padding:5px 8px;border-radius:9px;
     font-size:18px;font-weight:700;letter-spacing:-.01em;
-    padding:4px 6px;margin-left:-6px;border-radius:8px;
-    outline:none;
+    color:var(--text);text-align:left;
+    transition:.15s;
+  }
+  .trip-switch:active{background:var(--hover)}
+  .trip-label{
+    flex:1;min-width:0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  .title:focus{background:var(--hover);white-space:normal}
+  .trip-caret{font-size:11px;color:var(--muted);flex:0 0 auto}
   .icon-btn{
     width:38px;height:38px;flex:0 0 auto;
     border:1px solid var(--line);background:var(--card);color:var(--text);
@@ -60,13 +342,10 @@
     transition:.15s;
   }
   .icon-btn:active{background:var(--hover)}
-  .icon-btn.primary{
-    background:var(--solid);border-color:var(--solid);color:var(--solid-text);
-    font-size:20px;font-weight:400;
-  }
+  .back-btn{font-size:20px;font-weight:400}
 
-  /* ---------- 页签 ---------- */
   .tabs{
+    position:relative;
     max-width:820px;margin:0 auto;
     padding:2px 14px 10px;
     display:flex;gap:6px;
@@ -78,46 +357,78 @@
     display:inline-flex;align-items:center;gap:6px;
     border:1px solid var(--line);background:var(--card);color:var(--text);
     padding:7px 13px;border-radius:99px;font-size:13px;font-weight:500;
-    transition:.15s;white-space:nowrap;
+    transition:.18s;white-space:nowrap;
   }
-  .tab.active{background:var(--solid);border-color:var(--solid);color:var(--solid-text)}
-  .tab .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .tab.active{
+    background:var(--solid);border-color:var(--solid);color:var(--solid-text);
+    box-shadow:0 3px 10px rgba(15,23,42,.22);
+  }
+  .tab .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor}
   .tab .cnt{font-size:11px;opacity:.55;font-variant-numeric:tabular-nums}
 
-  /* ---------- 主体 ---------- */
   main{
+    position:relative;
     max-width:820px;margin:0 auto;
-    padding:16px 14px calc(80px + env(safe-area-inset-bottom,0px));
+    padding:16px 14px calc(120px + env(safe-area-inset-bottom,0px));
   }
 
-  .day-block{margin-bottom:24px}
+  .day-block{margin-bottom:26px}
   .day-head{
+    position:relative;
     display:flex;align-items:center;gap:8px;
-    margin-bottom:10px;padding-bottom:8px;
-    border-bottom:2px solid var(--line);
+    margin-bottom:11px;padding-bottom:9px;
   }
-  .day-badge{
-    background:var(--solid);color:var(--solid-text);
+  .day-head::after{
+    content:'';position:absolute;left:0;right:0;bottom:0;height:2px;
+    background:linear-gradient(90deg, var(--solid), transparent 92%);
+    border-radius:2px;opacity:.5;
+  }
+   .day-badge{
+    background:var(--grad-dark);color:var(--solid-text);
     font-size:12px;font-weight:700;
-    padding:3px 10px;border-radius:6px;
+    padding:5px 10px;border-radius:6px;
     letter-spacing:.02em;flex:0 0 auto;
+    box-shadow:0 2px 8px rgba(15,23,42,.15);
+    border:none;font-family:inherit;cursor:pointer;
+    display:inline-flex;align-items:center;gap:4px;
+    transition:.15s;
+  }
+  .day-badge::after{
+    content:'✎';font-size:10px;opacity:.7;margin-left:1px;
+  }
+  .day-badge:active{transform:scale(.96);opacity:.85}
   }
   .day-count{
     font-size:12px;color:var(--muted);
     margin-left:auto;font-variant-numeric:tabular-nums;
   }
 
-  /* ---------- 行程条目 ---------- */
   .item{
+    position:relative;
     display:flex;gap:4px;align-items:flex-start;
     background:var(--card);border:1px solid var(--line);
     border-radius:13px;
-    padding:12px 6px 12px 14px;
+    padding:12px 6px 12px 16px;
     margin-bottom:8px;
     box-shadow:0 1px 2px rgba(16,24,40,.04);
-    transition:.15s;
+    transition:.2s;
+    overflow:hidden;
   }
-  .item-main{flex:1;min-width:0}
+  .item::before{
+    content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:var(--c,#94a3b8);opacity:.7;
+    border-radius:13px 0 0 13px;
+  }
+  .item::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg, rgba(255,255,255,.4), transparent 40%);
+    pointer-events:none;opacity:.5;
+  }
+  @media (prefers-color-scheme: dark){
+    .item::after{background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%)}
+  }
+  .item:hover{border-color:#dbe2ea;box-shadow:0 3px 12px rgba(16,24,40,.08)}
+  .item-main{flex:1;min-width:0;position:relative;z-index:1}
   .item-meta{
     display:flex;align-items:center;gap:8px;
     margin-bottom:5px;flex-wrap:wrap;
@@ -132,8 +443,8 @@
     font-variant-numeric:tabular-nums;letter-spacing:-.01em;
   }
   .item-title{
-    font-size:15px;font-weight:600;
-    line-height:1.45;word-break:break-word;
+    font-size:15px;font-weight:600;line-height:1.45;
+    word-break:break-word;
   }
   .note{
     font-size:14px;color:var(--muted);
@@ -147,10 +458,11 @@
   }
   .expand-btn{
     background:none;border:none;
-    color:#3b82f6;font-size:13px;font-weight:600;
+    color:var(--accent);font-size:13px;font-weight:600;
     padding:8px 0 0;display:inline-block;
   }
   .more-btn{
+    position:relative;z-index:1;
     width:38px;height:38px;flex:0 0 auto;
     border:none;background:transparent;color:var(--muted);
     font-size:20px;line-height:1;border-radius:10px;
@@ -159,12 +471,11 @@
   }
   .more-btn:active{background:var(--hover)}
 
-  /* 图片：横向滑动 */
   .imgs{
     display:flex;gap:8px;
     margin-top:10px;
-    margin-left:-14px;margin-right:-6px;
-    padding:2px 6px 2px 14px;
+    margin-left:-16px;margin-right:-6px;
+    padding:2px 6px 2px 16px;
     overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
   }
   .imgs::-webkit-scrollbar{display:none}
@@ -172,28 +483,68 @@
     flex:0 0 auto;
     width:92px;height:92px;object-fit:cover;
     border-radius:11px;border:1px solid var(--line);
+    box-shadow:0 2px 8px rgba(16,24,40,.08);
   }
 
   .empty{
-    text-align:center;padding:70px 20px;
-    color:var(--muted);font-size:14px;
+    text-align:center;padding:60px 20px;
+    color:var(--muted);font-size:14px;line-height:1.8;
   }
-  .empty span{font-size:13px;opacity:.75}
+  .empty-icon{
+    font-size:52px;line-height:1;margin-bottom:14px;
+    display:block;opacity:.9;
+    filter:drop-shadow(0 4px 12px rgba(37,99,235,.15));
+  }
+  .empty span{font-size:13px;opacity:.8}
 
-  /* ---------- 弹窗 ---------- */
+  .fab{
+    position:fixed;
+    right:18px;
+    bottom:calc(22px + env(safe-area-inset-bottom,0px));
+    z-index:30;
+    width:58px;height:58px;
+    border:none;border-radius:50%;
+    background:var(--grad);color:var(--fab-text);
+    font-size:30px;font-weight:300;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    padding-bottom:3px;
+    box-shadow:var(--fab-shadow);
+    transition:transform .15s, box-shadow .15s;
+  }
+  .fab::before{
+    content:'';position:absolute;inset:-3px;
+    border-radius:50%;border:2px solid var(--fab);
+    opacity:0;animation:pulse 2.8s ease-out infinite;
+    pointer-events:none;
+  }
+  @keyframes pulse{
+    0%{transform:scale(.95);opacity:.55}
+    70%{transform:scale(1.35);opacity:0}
+    100%{transform:scale(1.35);opacity:0}
+  }
+  .fab:active{transform:scale(.92)}
+
+  /* =========================================================
+     弹窗 / 面板
+     ========================================================= */
   .modal-mask{
-    position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:50;
+    position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:50;
     display:none;align-items:center;justify-content:center;padding:16px;
-    backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
   }
   .modal-mask.show{display:flex}
   .modal{
-    background:var(--card);border-radius:18px;
+    position:relative;
+    background:var(--card);border-radius:20px;
     width:100%;max-width:520px;max-height:88vh;overflow:auto;
     padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.25);
-    animation:pop .18s ease-out;
+    animation:pop .2s cubic-bezier(.34,1.4,.64,1);
   }
-  @keyframes pop{from{transform:translateY(10px) scale(.98);opacity:0}}
+  .modal::before{
+    content:'';position:absolute;left:0;right:0;top:0;height:3px;
+    background:var(--grad);border-radius:20px 20px 0 0;
+  }
+  @keyframes pop{from{transform:translateY(12px) scale(.97);opacity:0}}
   .modal h2{font-size:17px;margin-bottom:4px}
   .modal .hint{font-size:12px;color:var(--muted);margin-bottom:14px}
 
@@ -208,10 +559,10 @@
     padding:11px 12px;background:var(--card);color:var(--text);
     outline:none;transition:.15s;
   }
-  /* 让日期选择器在深色模式下也好看 */
-  .field input[type=date]{color-scheme: light dark;}
+  .field input[type=date]{color-scheme:light dark}
   .field input:focus,.field select:focus,.field textarea:focus{
-    border-color:#94a3b8;box-shadow:0 0 0 3px rgba(148,163,184,.18);
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
   }
   .field textarea{resize:vertical;min-height:76px;line-height:1.6}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -240,8 +591,7 @@
 
   .modal-actions{
     display:flex;justify-content:flex-end;gap:8px;
-    margin-top:18px;padding-top:16px;
-    border-top:1px solid var(--line);
+    margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
   }
   .btn{
     border:1px solid var(--line);background:var(--card);color:var(--text);
@@ -250,10 +600,10 @@
   }
   .btn:active{background:var(--hover)}
   .btn.primary{
-    background:var(--solid);border-color:var(--solid);color:var(--solid-text);
+    background:var(--grad);border-color:transparent;color:#fff;
+    box-shadow:0 4px 12px rgba(37,99,235,.3);font-weight:600;
   }
 
-  /* 分类管理 */
   .cat-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
   .cat-row input[type=color]{
     width:38px;height:38px;padding:0;
@@ -267,7 +617,7 @@
     border-radius:10px;padding:10px 12px;
     background:var(--card);color:var(--text);outline:none;
   }
-  .cat-row input[type=text]:focus{border-color:#94a3b8}
+  .cat-row input[type=text]:focus{border-color:var(--accent)}
   .cat-row .del{
     background:none;border:none;color:var(--muted);
     font-size:13px;padding:8px 10px;border-radius:8px;flex:0 0 auto;
@@ -275,67 +625,185 @@
   .cat-row .del:active{background:#fee2e2;color:#dc2626}
   .add-cat{width:100%;text-align:center;border-style:dashed;margin-top:4px}
 
-  /* ---------- 底部操作面板 ---------- */
   .sheet-mask{
-    position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:60;
+    position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:60;
     display:none;align-items:flex-end;justify-content:center;
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
   }
   .sheet-mask.show{display:flex}
   .sheet{
+    position:relative;
     background:var(--card);width:100%;max-width:520px;
-    border-radius:18px 18px 0 0;
-    padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));
-    animation:slideUp .2s ease-out;
+    border-radius:20px 20px 0 0;
+    padding:0 8px calc(8px + env(safe-area-inset-bottom,0px));
+    animation:slideUp .22s cubic-bezier(.34,1.2,.64,1);
+    max-height:80vh;overflow:auto;
+    box-shadow:0 -10px 40px rgba(0,0,0,.15);
+  }
+  .sheet::before{
+    content:'';display:block;
+    width:40px;height:4px;background:var(--line);
+    border-radius:2px;margin:10px auto 6px;
   }
   @keyframes slideUp{from{transform:translateY(100%)}}
-  .sheet button{
+
+  .sheet-title{
+    font-size:13px;font-weight:600;color:var(--muted);
+    padding:8px 16px 8px;text-align:center;letter-spacing:.02em;
+  }
+  .sheet-divider{height:1px;background:var(--line);margin:8px 12px}
+  .sheet-btn{
     display:block;width:100%;
     padding:16px;border:none;background:none;
     font-size:16px;font-weight:500;color:var(--text);
     border-radius:12px;text-align:center;
+    font-family:inherit;transition:.15s;
   }
-  .sheet button:active{background:var(--hover)}
-  .sheet button.danger{color:#ef4444}
-  .sheet button.cancel{color:var(--muted);font-size:15px}
+  .sheet-btn:active{background:var(--hover)}
+  .sheet-btn.accent{color:var(--accent);font-weight:600}
+  .sheet-btn.danger{color:#ef4444}
+  .sheet-btn.cancel{color:var(--muted);font-size:15px}
+  .sheet-btn:disabled{opacity:.35;pointer-events:none}
 
-  /* ---------- 图片预览 ---------- */
+  .trip-row{
+    display:flex;align-items:center;gap:2px;
+    padding:2px;border-radius:12px;margin-bottom:2px;
+    transition:.15s;
+  }
+  .trip-row.active{background:color-mix(in srgb, var(--accent) 8%, transparent)}
+  .trip-row-main{
+    flex:1;min-width:0;
+    display:flex;align-items:center;gap:8px;
+    padding:13px 12px;border:none;background:none;
+    border-radius:10px;font-size:16px;font-weight:500;
+    color:var(--text);text-align:left;
+  }
+  .trip-row-main:active{background:var(--hover)}
+  .trip-row.active .trip-row-main{font-weight:700;color:var(--accent)}
+  .trip-row.active .trip-row-main::before{
+    content:'';width:4px;height:18px;border-radius:2px;
+    background:var(--grad);flex:0 0 auto;
+  }
+  .trip-row-name{
+    flex:1;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .trip-row-count{font-size:12px;color:var(--muted);flex:0 0 auto}
+  .trip-row-op{
+    border:none;background:none;font-size:13px;color:var(--muted);
+    padding:8px 10px;border-radius:8px;flex:0 0 auto;
+  }
+  .trip-row-op:active{background:var(--hover)}
+  .trip-row-op.danger:active{background:#fee2e2;color:#dc2626}
+
   .lightbox{
-    position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:80;
-    display:none;align-items:center;justify-content:center;
-    padding:20px;
+    position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:80;
+    display:none;align-items:center;justify-content:center;padding:20px;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
   }
   .lightbox.show{display:flex}
-  .lightbox img{max-width:100%;max-height:100%;border-radius:8px;object-fit:contain}
+  .lightbox img{
+    max-width:100%;max-height:100%;border-radius:10px;object-fit:contain;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+  }
 
-  /* ---------- 小屏微调 ---------- */
+  /* =========================================================
+     小屏 & 打印
+     ========================================================= */
   @media (max-width:400px){
-    .title{font-size:17px}
-    .item{padding:11px 4px 11px 13px}
+    .trip-card{flex-basis:265px;padding:22px}
+    .trip-carousel{padding:10px calc(50% - 132px)}
+    .card-title{font-size:21px}
+    .trip-switch{font-size:17px}
+    .item{padding:11px 4px 11px 15px}
     .imgs img{width:84px;height:84px}
+    .fab{width:54px;height:54px;font-size:28px;right:16px}
+  }
+  @media (max-height:640px){
+    .trip-card{height:280px;min-height:auto}
+    .picker-empty{gap:12px}
+    .empty-add-btn{width:96px;height:96px;font-size:46px}
   }
   @media print{
-    .topbar,.more-btn,.expand-btn,.icon-btn{display:none!important}
+    body{background:#fff!important;background-image:none!important}
+    #pickerScreen{display:none!important}
+    #detailScreen{display:block!important}
+    .topbar,.more-btn,.expand-btn,.icon-btn,.fab,.back-btn{display:none!important}
+    .topbar::before,.topbar::after,.item::after{display:none!important}
     .note.collapsed{display:block!important;-webkit-line-clamp:unset}
     .imgs{overflow:visible!important;flex-wrap:wrap!important}
     .imgs img{width:80px;height:80px}
-    body{background:#fff!important}
+    .item{box-shadow:none}
+    main{padding-bottom:0!important}
   }
 </style>
 </head>
 <body>
 
-<header class="topbar">
-  <div class="topbar-row">
-    <h1 class="title" id="title" contenteditable="true" spellcheck="false"></h1>
-    <button class="icon-btn primary" id="addBtn" aria-label="添加行程">＋</button>
-    <button class="icon-btn" id="menuBtn" aria-label="更多">⋯</button>
+<!-- ============================================================
+     屏幕 1：行程选择
+     ============================================================ -->
+<div class="screen" id="pickerScreen">
+  <header class="picker-head">
+    <div class="picker-brand">
+      <span class="brand-icon">✈️</span>
+      <div class="brand-text">
+        <h1>我的旅行</h1>
+        <p id="pickerSub">左右滑动切换行程</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="picker-main">
+    <!-- 有行程时 -->
+    <div class="carousel-wrap" id="carouselWrap">
+      <div class="trip-carousel" id="tripCarousel"></div>
+      <div class="picker-dots" id="pickerDots"></div>
+    </div>
+
+    <!-- 空状态 -->
+    <div class="picker-empty" id="pickerEmpty" style="display:none">
+      <button class="empty-add-btn" id="emptyAddBtn" aria-label="新建行程">+</button>
+      <h2>还没有行程</h2>
+      <p>点击加号，创建你的第一次旅行</p>
+    </div>
   </div>
-  <nav class="tabs" id="tabs"></nav>
-</header>
 
-<main id="list"></main>
+  <footer class="picker-foot" id="pickerFoot">
+    <button class="enter-btn" id="enterBtn">
+      <span>进入行程</span>
+      <span class="enter-arrow">→</span>
+    </button>
+    <button class="new-trip-btn" id="pickerNewBtn">+ 新建行程</button>
+  </footer>
+</div>
 
-<!-- 编辑 / 添加 -->
+<!-- ============================================================
+     屏幕 2：行程详情
+     ============================================================ -->
+<div class="screen" id="detailScreen">
+  <header class="topbar">
+    <div class="topbar-row">
+      <button class="icon-btn back-btn" id="backBtn" aria-label="返回">←</button>
+      <button class="trip-switch" id="tripSwitch">
+        <span class="trip-label" id="tripLabel">旅行清单</span>
+        <span class="trip-caret">▾</span>
+      </button>
+      <button class="icon-btn" id="menuBtn" aria-label="更多">⋯</button>
+    </div>
+    <nav class="tabs" id="tabs"></nav>
+  </header>
+
+  <main id="list"></main>
+
+  <button class="fab" id="addBtn" aria-label="添加">＋</button>
+</div>
+
+<!-- ============================================================
+     弹窗 / 面板
+     ============================================================ -->
+
+<!-- 编辑 / 添加 行程条目 -->
 <div class="modal-mask" id="editMask">
   <div class="modal">
     <h2 id="editTitle">添加行程</h2>
@@ -381,23 +849,60 @@
   </div>
 </div>
 
+<!-- 行程名称弹窗（新建 / 重命名） -->
+<div class="modal-mask" id="tripNameMask">
+  <div class="modal" style="max-width:420px">
+    <h2 id="tripNameTitle">新建行程</h2>
+    <p class="hint">给这次旅行起个名字</p>
+    <label class="field"><span>行程名称</span>
+      <input type="text" id="tripNameInput" placeholder="例如：马来西亚"></label>
+    <div class="modal-actions">
+      <button class="btn" data-close="tripNameMask">取消</button>
+      <button class="btn primary" id="tripNameSave">确定</button>
+    </div>
+  </div>
+</div>
+<!-- 日期分组编辑 -->
+<div class="modal-mask" id="dayDateMask">
+  <div class="modal" style="max-width:420px">
+    <h2>修改日期</h2>
+    <p class="hint" id="dayDateHint">修改后这一天的所有行程会移动到新日期</p>
+    <label class="field"><span>新日期</span>
+      <input type="date" id="dayDateInput"></label>
+    <div class="modal-actions">
+      <button class="btn" data-close="dayDateMask">取消</button>
+      <button class="btn primary" id="dayDateSave">确定</button>
+    </div>
+  </div>
+</div>
 <!-- 顶部菜单 -->
 <div class="sheet-mask" id="menuMask">
   <div class="sheet">
-    <button data-menu="cat">分类管理</button>
-    <button data-menu="export">导出 JSON</button>
-    <button data-menu="import">导入 JSON</button>
-    <button data-menu="print">打印 / 导出 PDF</button>
-    <button data-menu="cancel" class="cancel">取消</button>
+    <button class="sheet-btn" data-menu="cat" id="menuCat">分类管理</button>
+    <button class="sheet-btn" data-menu="export">导出当前行程</button>
+    <button class="sheet-btn" data-menu="import">导入行程</button>
+    <button class="sheet-btn" data-menu="print">打印 / 导出 PDF</button>
+    <button class="sheet-btn cancel" data-menu="cancel">取消</button>
   </div>
 </div>
 
-<!-- 单条操作 -->
+<!-- 详情页：切换行程面板 -->
+<div class="sheet-mask" id="tripMask">
+  <div class="sheet">
+    <div class="sheet-title">切换行程</div>
+    <div id="tripList"></div>
+    <div class="sheet-divider"></div>
+    <button class="sheet-btn accent" id="newTripBtn">+ 新建行程</button>
+    <button class="sheet-btn cancel" data-close="tripMask">取消</button>
+  </div>
+</div>
+
+<!-- 单条行程操作 -->
 <div class="sheet-mask" id="itemMask">
   <div class="sheet">
-    <button data-item="edit">编辑</button>
-    <button data-item="del" class="danger">删除</button>
-    <button data-item="cancel" class="cancel">取消</button>
+    <button class="sheet-btn" data-item="edit">编辑</button>
+    <button class="sheet-btn danger" data-item="del">删除</button>
+    <button class="sheet-btn cancel" data-item="cancel">取消</button>
   </div>
 </div>
 
@@ -411,33 +916,70 @@
    数据层
    ========================================================= */
 const LS_KEY = 'travel-list-v1';
-const uid = () => 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const uid     = () => 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const newTid  = () => 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-function defaultState() {
-  return {
-    title: '我的旅行清单',
-    categories: [
-      { id: 'c1', name: '交通', color: '#3b82f6' },
-      { id: 'c2', name: '景点', color: '#10b981' },
-      { id: 'c3', name: '餐饮', color: '#f59e0b' },
-      { id: 'c4', name: '住宿', color: '#8b5cf6' },
-      { id: 'c5', name: '购物', color: '#ec4899' },
-      { id: 'c6', name: '其他', color: '#64748b' }
-    ],
-    items: []
-  };
+function defaultCategories() {
+  return [
+    { id: 'c1', name: '交通', color: '#3b82f6' },
+    { id: 'c2', name: '景点', color: '#10b981' },
+    { id: 'c3', name: '餐饮', color: '#f59e0b' },
+    { id: 'c4', name: '住宿', color: '#8b5cf6' },
+    { id: 'c5', name: '购物', color: '#ec4899' },
+    { id: 'c6', name: '其他', color: '#64748b' }
+  ];
 }
 
-let state;
-try {
-  state = JSON.parse(localStorage.getItem(LS_KEY)) || defaultState();
-  if (!Array.isArray(state.items)) state.items = [];
-  if (!Array.isArray(state.categories)) state.categories = [];
-} catch (e) { state = defaultState(); }
+function createEmptyStore() {
+  return { activeTripId: null, trips: [] };
+}
+
+function migrate(raw) {
+  if (!raw || typeof raw !== 'object') return createEmptyStore();
+
+  if (Array.isArray(raw.trips)) {
+    return {
+      activeTripId: raw.activeTripId || (raw.trips[0]?.id || null),
+      trips: raw.trips.filter(t => t && typeof t === 'object')
+    };
+  }
+
+  if (Array.isArray(raw.items)) {
+    const id = newTid();
+    return {
+      activeTripId: id,
+      trips: [{
+        id,
+        title: raw.title || '我的旅行清单',
+        categories: (Array.isArray(raw.categories) && raw.categories.length)
+          ? raw.categories : defaultCategories(),
+        items: raw.items
+      }]
+    };
+  }
+
+  return createEmptyStore();
+}
+
+let store = (() => {
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) {}
+  return migrate(raw);
+})();
+
+let state = null;
+let pendingTripId = store.activeTripId;
+
+function getActiveTrip() {
+  if (!store.trips.length) return null;
+  let t = store.trips.find(x => x.id === store.activeTripId);
+  if (!t) { t = store.trips[0]; store.activeTripId = t.id; }
+  return t;
+}
 
 function save() {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    localStorage.setItem(LS_KEY, JSON.stringify(store));
   } catch (e) {
     alert('保存失败：本地存储空间不足。\n建议先「导出」备份，再删掉部分图片。');
   }
@@ -449,9 +991,8 @@ function save() {
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 
-const catOf = id => state.categories.find(c => c.id === id);
+const catOf = id => state?.categories.find(c => c.id === id);
 
-/* 日期排序键：YYYY-MM-DD 优先，兼容旧数据 Day N */
 function dateSortKey(d) {
   if (!d) return 999999;
   const s = String(d);
@@ -463,18 +1004,18 @@ function dateSortKey(d) {
   return m ? parseInt(m[1], 10) : 999999;
 }
 
-/* 把 YYYY-MM-DD 渲染成「10月4日 周日」 */
 function formatDateLabel(dateStr) {
   if (!dateStr) return '未安排';
   const p = String(dateStr).split('-');
   if (p.length === 3) {
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) {
+    const y = +p[0], m = +p[1], d = +p[2];
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      const dt = new Date(y, m - 1, d);
       const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-      return `${parseInt(p[1], 10)}月${parseInt(p[2], 10)}日 ${days[d.getDay()]}`;
+      return `${m}月${d}日 ${days[dt.getDay()]}`;
     }
   }
-  return dateStr; /* 兼容旧数据 "Day 1" */
+  return dateStr;
 }
 
 function sortItems(arr) {
@@ -484,6 +1025,17 @@ function sortItems(arr) {
     const ta = a.time || '99:99', tb = b.time || '99:99';
     return ta < tb ? -1 : ta > tb ? 1 : 0;
   });
+}
+
+/* 行程日期范围 */
+function getTripDateRange(items) {
+  if (!items || !items.length) return '暂无安排';
+  const ds = items.map(i => i.date).filter(d => d && /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  if (!ds.length) return '暂无日期';
+  const a = ds[0], b = ds[ds.length - 1];
+  const fa = `${+a.slice(5, 7)}/${+a.slice(8, 10)}`;
+  const fb = `${+b.slice(5, 7)}/${+b.slice(8, 10)}`;
+  return a === b ? fa : `${fa} - ${fb}`;
 }
 
 function compressImage(file, maxSize = 1000, quality = 0.75) {
@@ -512,19 +1064,194 @@ function compressImage(file, maxSize = 1000, quality = 0.75) {
 }
 
 /* =========================================================
-   渲染
+   屏幕切换
    ========================================================= */
-const titleEl = document.getElementById('title');
+function showScreen(name) {
+  const picker = document.getElementById('pickerScreen');
+  const detail = document.getElementById('detailScreen');
+
+  if (name === 'picker') {
+    pendingTripId = store.activeTripId;
+    document.body.classList.add('picker-open');
+    detail.classList.remove('active');
+    picker.classList.add('active');
+    renderPicker();
+  } else {
+    document.body.classList.remove('picker-open');
+    picker.classList.remove('active');
+    detail.classList.add('active');
+    window.scrollTo(0, 0);
+    render();
+  }
+}
+
+function goDetail(tripId) {
+  if (!store.trips.length) return;
+  if (tripId && store.trips.find(t => t.id === tripId)) {
+    store.activeTripId = tripId;
+  } else {
+    store.activeTripId = store.trips[0].id;
+  }
+  save();
+  showScreen('detail');
+}
+
+/* =========================================================
+   行程选择页渲染
+   ========================================================= */
+const CARD_GRADIENTS = [
+  'linear-gradient(135deg,#2563eb,#06b6d4)',
+  'linear-gradient(135deg,#8b5cf6,#ec4899)',
+  'linear-gradient(135deg,#10b981,#06b6d4)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#6366f1,#8b5cf6)',
+  'linear-gradient(135deg,#14b8a6,#3b82f6)',
+  'linear-gradient(135deg,#f43f5e,#f59e0b)',
+  'linear-gradient(135deg,#0ea5e9,#8b5cf6)'
+];
+const CARD_EMOJIS = ['✈️', '🏖️', '🗺️', '🏔️', '🌴', '🏝️', '🚗', '🎡'];
+
+const carouselEl = document.getElementById('tripCarousel');
+const dotsEl     = document.getElementById('pickerDots');
+const carouselWrapEl = document.getElementById('carouselWrap');
+const emptyEl    = document.getElementById('pickerEmpty');
+const footEl     = document.getElementById('pickerFoot');
+
+function renderPicker() {
+  if (!store.trips.length) {
+    carouselWrapEl.style.display = 'none';
+    footEl.style.display = 'none';
+    emptyEl.style.display = 'flex';
+    document.getElementById('pickerSub').textContent = '还没有行程';
+    return;
+  }
+
+  carouselWrapEl.style.display = '';
+  footEl.style.display = '';
+  emptyEl.style.display = 'none';
+  document.getElementById('pickerSub').textContent =
+    store.trips.length > 1 ? '左右滑动切换行程' : '你的行程';
+
+  /* 校验 pendingTripId */
+  let targetId = pendingTripId || store.activeTripId;
+  if (!store.trips.find(t => t.id === targetId)) targetId = store.trips[0].id;
+  pendingTripId = targetId;
+
+  carouselEl.innerHTML = store.trips.map((t, i) => {
+    const grad = CARD_GRADIENTS[i % CARD_GRADIENTS.length];
+    const emoji = CARD_EMOJIS[i % CARD_EMOJIS.length];
+    const count = (t.items || []).length;
+    const range = getTripDateRange(t.items);
+    const isActive = t.id === targetId;
+    return `
+      <div class="trip-card ${isActive ? 'active' : ''}" data-id="${t.id}" style="background:${grad}">
+        <div class="card-top">
+          <span class="card-emoji">${emoji}</span>
+          <span class="card-count">${count} 项</span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">${esc(t.title)}</h3>
+          <span class="card-range">${esc(range)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  dotsEl.innerHTML = store.trips.map((t, i) => {
+    const isActive = t.id === targetId;
+    return `<span class="dot ${isActive ? 'active' : ''}"></span>`;
+  }).join('');
+
+  /* 滚动到选中卡片 */
+  requestAnimationFrame(() => {
+    const activeCard = carouselEl.querySelector('.trip-card.active')
+                    || carouselEl.querySelector('.trip-card');
+    if (activeCard) {
+      const cRect = carouselEl.getBoundingClientRect();
+      const kRect = activeCard.getBoundingClientRect();
+      const delta = (kRect.left + kRect.width / 2) - (cRect.left + cRect.width / 2);
+      carouselEl.scrollLeft += delta;
+    }
+    updateActiveCard();
+  });
+}
+
+let rafId = null;
+
+function updateActiveCard() {
+  const cards = [...carouselEl.querySelectorAll('.trip-card')];
+  if (!cards.length) return;
+
+  const cRect = carouselEl.getBoundingClientRect();
+  const centerX = cRect.left + cRect.width / 2;
+
+  let bestIdx = 0, bestDist = Infinity;
+  cards.forEach((card, i) => {
+    const r = card.getBoundingClientRect();
+    const d = Math.abs((r.left + r.width / 2) - centerX);
+    if (d < bestDist) { bestDist = d; bestIdx = i; }
+  });
+
+  cards.forEach((c, i) => c.classList.toggle('active', i === bestIdx));
+
+  const dots = dotsEl.querySelectorAll('.dot');
+  dots.forEach((d, i) => d.classList.toggle('active', i === bestIdx));
+
+  pendingTripId = cards[bestIdx].dataset.id;
+}
+
+carouselEl.addEventListener('scroll', () => {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(updateActiveCard);
+}, { passive: true });
+
+/* 点击卡片：未选中 → 居中；已选中 → 进入 */
+carouselEl.addEventListener('click', e => {
+  const card = e.target.closest('.trip-card');
+  if (!card) return;
+  if (card.classList.contains('active')) {
+    goDetail(card.dataset.id);
+    return;
+  }
+  card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+});
+
+/* 进入按钮 */
+document.getElementById('enterBtn').addEventListener('click', () => {
+  goDetail(pendingTripId);
+});
+
+/* 新建行程按钮（picker 底部） */
+document.getElementById('pickerNewBtn').addEventListener('click', () => {
+  openTripNameDialog('new', null);
+});
+
+/* 空状态大加号 */
+document.getElementById('emptyAddBtn').addEventListener('click', () => {
+  openTripNameDialog('new', null);
+});
+
+/* =========================================================
+   详情页渲染
+   ========================================================= */
 const tabsEl  = document.getElementById('tabs');
 const listEl  = document.getElementById('list');
+const tripLabelEl = document.getElementById('tripLabel');
 let activeCat = 'all';
 
-function initTitle() {
-  titleEl.textContent = state.title || '旅行清单';
-  document.title = state.title || '旅行清单';
+function renderTop() {
+  tripLabelEl.textContent = state ? state.title : '旅行清单';
+  document.title = state ? state.title : '我的旅行';
 }
 
 function renderTabs() {
+  if (!state) {
+    tabsEl.innerHTML = '';
+    tabsEl.style.display = 'none';
+    return;
+  }
+  tabsEl.style.display = '';
+
   const counts = {};
   state.items.forEach(it => { counts[it.catId] = (counts[it.catId] || 0) + 1; });
 
@@ -533,7 +1260,7 @@ function renderTabs() {
 
   state.categories.forEach(c => {
     html += `<button class="tab ${activeCat === c.id ? 'active' : ''}" data-cat="${c.id}">
-      <span class="dot" style="background:${c.color}"></span>${esc(c.name)}
+      <span class="dot" style="background:${c.color};color:${c.color}"></span>${esc(c.name)}
       <span class="cnt">${counts[c.id] || 0}</span></button>`;
   });
 
@@ -560,10 +1287,10 @@ function itemHTML(it) {
     : '';
 
   return `
-  <article class="item" data-id="${it.id}">
+  <article class="item" data-id="${it.id}" style="--c:${color}">
     <div class="item-main">
       <div class="item-meta">
-        <span class="chip" style="--c:${color}">${esc(catName)}</span>
+        <span class="chip">${esc(catName)}</span>
         ${timeHtml}
       </div>
       <h3 class="item-title">${esc(it.title)}</h3>
@@ -575,12 +1302,23 @@ function itemHTML(it) {
 }
 
 function renderList() {
+  if (!state) {
+    listEl.innerHTML = `<div class="empty">
+      <span class="empty-icon">🧳</span>
+      还没有行程<br>
+      <span>点右下角「＋」新建一次旅行</span></div>`;
+    return;
+  }
+
   const filtered = state.items.filter(
     it => activeCat === 'all' || it.catId === activeCat
   );
 
   if (!filtered.length) {
-    listEl.innerHTML = `<div class="empty">这里还没有内容<br><span>点右上角「＋」开始记录</span></div>`;
+    listEl.innerHTML = `<div class="empty">
+      <span class="empty-icon">📍</span>
+      这里还没有内容<br>
+      <span>点右下角「＋」开始记录</span></div>`;
     return;
   }
 
@@ -593,10 +1331,10 @@ function renderList() {
 
   let html = '';
   groups.forEach((items, dateKey) => {
-    html += `
+     html += `
       <section class="day-block">
         <div class="day-head">
-          <span class="day-badge">${esc(formatDateLabel(dateKey))}</span>
+          <button class="day-badge" data-day="${esc(dateKey)}">${esc(formatDateLabel(dateKey))}</button>
           <span class="day-count">${items.length} 项</span>
         </div>
         ${items.map(itemHTML).join('')}
@@ -606,7 +1344,9 @@ function renderList() {
   listEl.innerHTML = html;
 }
 
-function renderAll() {
+function render() {
+  state = getActiveTrip();
+  renderTop();
   renderTabs();
   renderList();
 }
@@ -629,11 +1369,15 @@ tabsEl.addEventListener('click', e => {
 let currentItemId = null;
 
 listEl.addEventListener('click', e => {
-  /* 图片预览 */
+  const badge = e.target.closest('.day-badge');
+  if (badge) {
+    openDayDateEdit(badge.dataset.day);
+    return;
+  }
+
   const img = e.target.closest('.imgs img');
   if (img) { openLightbox(img.src); return; }
 
-  /* 展开 / 收起备注 */
   const expandBtn = e.target.closest('[data-act="expand"]');
   if (expandBtn) {
     const note = expandBtn.previousElementSibling;
@@ -642,12 +1386,10 @@ listEl.addEventListener('click', e => {
     return;
   }
 
-  /* 更多操作 */
   const moreBtn = e.target.closest('[data-act="more"]');
   if (moreBtn) {
     currentItemId = moreBtn.closest('.item').dataset.id;
     document.getElementById('itemMask').classList.add('show');
-    return;
   }
 });
 
@@ -666,24 +1408,34 @@ lightbox.addEventListener('click', () => {
 });
 
 /* =========================================================
-   编辑弹窗
+   编辑条目
    ========================================================= */
 const editMask = document.getElementById('editMask');
 let editingId = null;
 let editingImages = [];
 
 function openEdit(id) {
+  if (!state) return;
   editingId = id || null;
   const it = id ? state.items.find(i => i.id === id) : null;
 
   document.getElementById('editTitle').textContent = it ? '编辑行程' : '添加行程';
-  document.getElementById('editHint').textContent = it
-    ? '修改完点保存即可'
-    : '点击日期打开系统日历选择';
 
-  const dateInput = document.getElementById('fDate');
-  /* 如果是旧数据 "Day 1"，日期框会留空，让用户重新选 */
-  dateInput.value = (it?.date && it.date.includes('-')) ? it.date : '';
+  const hintEl = document.getElementById('editHint');
+  const rawDate = it?.date || '';
+  const isStdDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate);
+
+  if (it) {
+    if (!isStdDate && rawDate) {
+      hintEl.innerHTML = `原记录：<strong style="color:var(--accent)">${esc(rawDate)}</strong>，请选择实际日期`;
+    } else {
+      hintEl.textContent = '修改完点保存即可';
+    }
+  } else {
+    hintEl.textContent = '点击日期打开系统日历选择';
+  }
+
+  document.getElementById('fDate').value = isStdDate ? rawDate : '';
   document.getElementById('fTime').value = it?.time || '';
 
   const sel = document.getElementById('fCat');
@@ -728,6 +1480,8 @@ document.getElementById('fFile').addEventListener('change', async e => {
 });
 
 document.getElementById('fSave').addEventListener('click', () => {
+  if (!state) return;
+
   const titleField = document.getElementById('fTitle');
   const title = titleField.value.trim();
   if (!title) {
@@ -737,10 +1491,8 @@ document.getElementById('fSave').addEventListener('click', () => {
     return;
   }
 
-  const dateVal = document.getElementById('fDate').value; /* 标准格式 YYYY-MM-DD */
-  
   const data = {
-    date: dateVal,
+    date: document.getElementById('fDate').value,
     time: document.getElementById('fTime').value,
     catId: document.getElementById('fCat').value || null,
     title,
@@ -756,7 +1508,7 @@ document.getElementById('fSave').addEventListener('click', () => {
 
   save();
   editMask.classList.remove('show');
-  renderAll();
+  render();
 });
 
 /* =========================================================
@@ -766,6 +1518,7 @@ const catMask = document.getElementById('catMask');
 const catListEl = document.getElementById('catList');
 
 function renderCatList() {
+  if (!state) return;
   catListEl.innerHTML = state.categories.map(c => `
     <div class="cat-row" data-id="${c.id}">
       <input type="color" value="${c.color}" data-role="color" title="换颜色">
@@ -775,6 +1528,7 @@ function renderCatList() {
 }
 
 catListEl.addEventListener('input', e => {
+  if (!state) return;
   const row = e.target.closest('.cat-row');
   if (!row) return;
   const cat = state.categories.find(c => c.id === row.dataset.id);
@@ -787,7 +1541,7 @@ catListEl.addEventListener('input', e => {
 });
 
 catListEl.addEventListener('click', e => {
-  if (e.target.dataset.role !== 'del') return;
+  if (!state || e.target.dataset.role !== 'del') return;
   const id = e.target.closest('.cat-row').dataset.id;
   const used = state.items.filter(i => i.catId === id).length;
 
@@ -797,27 +1551,244 @@ catListEl.addEventListener('click', e => {
   state.items.forEach(i => { if (i.catId === id) i.catId = null; });
   if (activeCat === id) activeCat = 'all';
 
-  save(); renderCatList(); renderAll();
+  save(); renderCatList(); render();
 });
 
 document.getElementById('catAdd').addEventListener('click', () => {
+  if (!state) return;
   const palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#ef4444', '#64748b'];
   state.categories.push({
     id: uid(),
     name: '新分类',
     color: palette[state.categories.length % palette.length]
   });
-  save(); renderCatList(); renderAll();
+  save(); renderCatList(); render();
   const rows = catListEl.querySelectorAll('.cat-row');
   const last = rows[rows.length - 1]?.querySelector('input[type=text]');
   if (last) { last.focus(); last.select(); }
 });
 
 /* =========================================================
+   行程管理
+   ========================================================= */
+const tripMask   = document.getElementById('tripMask');
+const tripListEl = document.getElementById('tripList');
+
+function renderTripList() {
+  const activeId = getActiveTrip()?.id;
+
+  if (!store.trips.length) {
+    tripListEl.innerHTML =
+      '<p class="hint" style="text-align:center;padding:18px 0">还没有行程，点下面新建一个</p>';
+    return;
+  }
+
+  tripListEl.innerHTML = store.trips.map(t => `
+    <div class="trip-row ${t.id === activeId ? 'active' : ''}" data-id="${t.id}">
+      <button class="trip-row-main" data-act="switch">
+        <span class="trip-row-name">${esc(t.title)}</span>
+        <span class="trip-row-count">${(t.items || []).length} 项</span>
+      </button>
+      <button class="trip-row-op" data-act="rename">改名</button>
+      <button class="trip-row-op danger" data-act="delete">删除</button>
+    </div>
+  `).join('');
+}
+
+function switchTrip(id) {
+  if (!store.trips.find(t => t.id === id)) return;
+  store.activeTripId = id;
+  pendingTripId = id;
+  activeCat = 'all';
+  save();
+  render();
+  tripMask.classList.remove('show');
+}
+
+/* 行程名称弹窗 */
+const tripNameMask  = document.getElementById('tripNameMask');
+const tripNameInput = document.getElementById('tripNameInput');
+let tripNameMode = 'new';
+let tripNameTargetId = null;
+
+function openTripNameDialog(mode, id) {
+  tripNameMode = mode;
+  tripNameTargetId = id || null;
+
+  if (mode === 'rename') {
+    const t = store.trips.find(x => x.id === id);
+    document.getElementById('tripNameTitle').textContent = '重命名行程';
+    tripNameInput.value = t?.title || '';
+  } else {
+    document.getElementById('tripNameTitle').textContent = '新建行程';
+    tripNameInput.value = '';
+  }
+
+  tripNameMask.classList.add('show');
+  setTimeout(() => { tripNameInput.focus(); tripNameInput.select(); }, 60);
+}
+
+document.getElementById('tripNameSave').addEventListener('click', () => {
+  const name = tripNameInput.value.trim();
+  if (!name) {
+    tripNameInput.focus();
+    tripNameInput.style.borderColor = '#f87171';
+    setTimeout(() => tripNameInput.style.borderColor = '', 1200);
+    return;
+  }
+
+  if (tripNameMode === 'rename') {
+    const t = store.trips.find(x => x.id === tripNameTargetId);
+    if (t) t.title = name;
+    save();
+    renderTripList();
+    if (document.getElementById('detailScreen').classList.contains('active')) {
+      render();
+    }
+    tripNameMask.classList.remove('show');
+    return;
+  }
+
+  /* 新建行程 */
+  const trip = {
+    id: newTid(),
+    title: name,
+    categories: defaultCategories(),
+    items: []
+  };
+  store.trips.push(trip);
+  store.activeTripId = trip.id;
+  pendingTripId = trip.id;
+  activeCat = 'all';
+  save();
+
+  tripNameMask.classList.remove('show');
+  tripMask.classList.remove('show');
+
+  /* 直接进入详情页 */
+  showScreen('detail');
+});
+
+tripNameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('tripNameSave').click();
+  }
+});
+/* =========================================================
+   日期分组编辑（批量修改某一天）
+   ========================================================= */
+let editingDayKey = null;
+
+function openDayDateEdit(dateKey) {
+  if (!state) return;
+  editingDayKey = dateKey == null ? '' : String(dateKey);
+
+  const input = document.getElementById('dayDateInput');
+  input.value = /^\d{4}-\d{2}-\d{2}$/.test(editingDayKey) ? editingDayKey : '';
+
+  const count = state.items.filter(it => (it.date || '') === editingDayKey).length;
+  const label = editingDayKey ? `「${editingDayKey}」` : '未安排日期';
+  document.getElementById('dayDateHint').innerHTML =
+    `将 <strong style="color:var(--accent)">${label}</strong> 这天的 <strong>${count}</strong> 条行程移动到新日期`;
+
+  document.getElementById('dayDateMask').classList.add('show');
+  setTimeout(() => input.focus(), 60);
+}
+
+document.getElementById('dayDateSave').addEventListener('click', () => {
+  const input = document.getElementById('dayDateInput');
+  const newDate = input.value;
+  if (!newDate) {
+    input.focus();
+    input.style.borderColor = '#f87171';
+    setTimeout(() => input.style.borderColor = '', 1200);
+    return;
+  }
+  if (!state || editingDayKey === null) return;
+
+  state.items.forEach(it => {
+    if ((it.date || '') === editingDayKey) it.date = newDate;
+  });
+  save();
+  document.getElementById('dayDateMask').classList.remove('show');
+  render();
+  editingDayKey = null;
+});
+
+document.getElementById('dayDateInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('dayDateSave').click();
+  }
+});
+
+/* 详情页：切换行程按钮 */
+document.getElementById('tripSwitch').addEventListener('click', () => {
+  renderTripList();
+  tripMask.classList.add('show');
+});
+
+/* 详情页：切换行程面板 */
+tripListEl.addEventListener('click', e => {
+  const row = e.target.closest('.trip-row');
+  if (!row) return;
+  const id = row.dataset.id;
+  const btn = e.target.closest('[data-act]');
+  const act = btn?.dataset.act;
+
+  if (act === 'switch') {
+    switchTrip(id);
+  } else if (act === 'rename') {
+    openTripNameDialog('rename', id);
+  } else if (act === 'delete') {
+    const t = store.trips.find(x => x.id === id);
+    if (!t) return;
+    const n = (t.items || []).length;
+    const msg = n
+      ? `确定删除「${t.title}」？\n里面的 ${n} 条行程也会一起删掉。`
+      : `确定删除「${t.title}」？`;
+    if (!confirm(msg)) return;
+
+    store.trips = store.trips.filter(x => x.id !== id);
+    if (store.activeTripId === id) {
+      store.activeTripId = store.trips[0]?.id || null;
+    }
+    pendingTripId = store.activeTripId;
+    activeCat = 'all';
+    save();
+    renderTripList();
+
+    if (!store.trips.length) {
+      tripMask.classList.remove('show');
+      showScreen('picker');
+    } else {
+      render();
+    }
+  }
+});
+
+/* 详情页：新建行程按钮 */
+document.getElementById('newTripBtn').addEventListener('click', () => {
+  openTripNameDialog('new', null);
+});
+
+/* 详情页：返回按钮 */
+document.getElementById('backBtn').addEventListener('click', () => {
+  showScreen('picker');
+});
+
+/* =========================================================
    导出 / 导入
    ========================================================= */
 function exportJSON() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  if (!state) return;
+  const payload = {
+    title: state.title,
+    categories: state.categories,
+    items: state.items
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = (state.title || '旅行清单') + '.json';
@@ -833,17 +1804,45 @@ document.getElementById('importFile').addEventListener('change', e => {
   r.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (!data || !Array.isArray(data.items)) throw new Error('格式不对');
-      if (!confirm('导入会覆盖当前所有内容，确定继续？')) return;
 
-      state = {
-        title: data.title || '旅行清单',
-        categories: Array.isArray(data.categories) ? data.categories : [],
-        items: data.items
-      };
-      activeCat = 'all';
-      save(); initTitle(); renderAll();
-      alert('导入成功');
+      if (data && Array.isArray(data.trips)) {
+        if (!confirm('导入会替换所有行程，确定继续？')) return;
+        store = {
+          activeTripId: data.activeTripId || (data.trips[0]?.id || null),
+          trips: data.trips
+        };
+        pendingTripId = store.activeTripId;
+        activeCat = 'all';
+        save();
+        if (document.getElementById('detailScreen').classList.contains('active')) {
+          render();
+        } else {
+          renderPicker();
+        }
+        alert('导入成功');
+        return;
+      }
+
+      if (data && Array.isArray(data.items)) {
+        if (!confirm('导入将作为一个新行程添加，确定继续？')) return;
+        const trip = {
+          id: newTid(),
+          title: data.title || '导入的行程',
+          categories: (Array.isArray(data.categories) && data.categories.length)
+            ? data.categories : defaultCategories(),
+          items: data.items
+        };
+        store.trips.push(trip);
+        store.activeTripId = trip.id;
+        pendingTripId = trip.id;
+        activeCat = 'all';
+        save();
+        showScreen('detail');
+        alert('导入成功');
+        return;
+      }
+
+      throw new Error('格式不对');
     } catch (err) {
       alert('导入失败：文件格式不正确');
     }
@@ -859,6 +1858,7 @@ const menuMask = document.getElementById('menuMask');
 const itemMask = document.getElementById('itemMask');
 
 document.getElementById('menuBtn').addEventListener('click', () => {
+  document.getElementById('menuCat').disabled = !state;
   menuMask.classList.add('show');
 });
 
@@ -870,6 +1870,7 @@ menuMask.addEventListener('click', e => {
   menuMask.classList.remove('show');
 
   if (act === 'cat') {
+    if (!state) return;
     renderCatList();
     catMask.classList.add('show');
   } else if (act === 'export') {
@@ -888,17 +1889,25 @@ itemMask.addEventListener('click', e => {
   const act = btn.dataset.item;
   itemMask.classList.remove('show');
 
-  if (!currentItemId) return;
+  if (!currentItemId || !state) return;
 
   if (act === 'edit') {
     openEdit(currentItemId);
   } else if (act === 'del') {
     if (confirm('确定删除这条行程？')) {
       state.items = state.items.filter(i => i.id !== currentItemId);
-      save(); renderAll();
+      save(); render();
     }
   }
   currentItemId = null;
+});
+
+/* =========================================================
+   FAB 添加
+   ========================================================= */
+document.getElementById('addBtn').addEventListener('click', () => {
+  if (!state) return;
+  openEdit(null);
 });
 
 /* =========================================================
@@ -910,7 +1919,13 @@ document.querySelectorAll('[data-close]').forEach(btn => {
   });
 });
 
-[editMask, catMask].forEach(mask => {
+[editMask, catMask, tripNameMask, document.getElementById('dayDateMask')].forEach(mask => {
+  mask.addEventListener('click', e => {
+    if (e.target === mask) mask.classList.remove('show');
+  });
+});
+
+[tripMask, menuMask, itemMask].forEach(mask => {
   mask.addEventListener('click', e => {
     if (e.target === mask) mask.classList.remove('show');
   });
@@ -918,27 +1933,15 @@ document.querySelectorAll('[data-close]').forEach(btn => {
 
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  document.querySelectorAll('.modal-mask.show, .sheet-mask.show').forEach(m => m.classList.remove('show'));
+  document.querySelectorAll('.modal-mask.show, .sheet-mask.show')
+    .forEach(m => m.classList.remove('show'));
   lightbox.classList.remove('show');
-});
-
-document.getElementById('addBtn').addEventListener('click', () => openEdit(null));
-
-titleEl.addEventListener('blur', () => {
-  state.title = titleEl.textContent.trim() || '旅行清单';
-  titleEl.textContent = state.title;
-  document.title = state.title;
-  save();
-});
-titleEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); }
 });
 
 /* =========================================================
    启动
    ========================================================= */
-initTitle();
-renderAll();
+showScreen('picker');
 </script>
 </body>
 </html>
