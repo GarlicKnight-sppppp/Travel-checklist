@@ -202,12 +202,14 @@
     display:block;font-size:12px;font-weight:600;
     color:var(--muted);margin-bottom:5px;
   }
-  .field input[type=text],.field input[type=time],
+  .field input[type=text],.field input[type=time],.field input[type=date],
   .field select,.field textarea{
     width:100%;border:1px solid var(--line);border-radius:10px;
     padding:11px 12px;background:var(--card);color:var(--text);
     outline:none;transition:.15s;
   }
+  /* 让日期选择器在深色模式下也好看 */
+  .field input[type=date]{color-scheme: light dark;}
   .field input:focus,.field select:focus,.field textarea:focus{
     border-color:#94a3b8;box-shadow:0 0 0 3px rgba(148,163,184,.18);
   }
@@ -337,11 +339,11 @@
 <div class="modal-mask" id="editMask">
   <div class="modal">
     <h2 id="editTitle">添加行程</h2>
-    <p class="hint" id="editHint">日期可填 Day 1，也可填 2026-10-01</p>
+    <p class="hint" id="editHint">点击日期打开系统日历选择</p>
 
     <div class="row2">
-      <label class="field"><span>日期 / 第几天</span>
-        <input type="text" id="fDate" placeholder="Day 1"></label>
+      <label class="field"><span>日期</span>
+        <input type="date" id="fDate"></label>
       <label class="field"><span>时间</span>
         <input type="time" id="fTime"></label>
     </div>
@@ -449,6 +451,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g,
 
 const catOf = id => state.categories.find(c => c.id === id);
 
+/* 日期排序键：YYYY-MM-DD 优先，兼容旧数据 Day N */
 function dateSortKey(d) {
   if (!d) return 999999;
   const s = String(d);
@@ -458,6 +461,20 @@ function dateSortKey(d) {
   }
   const m = s.match(/(\d+)/);
   return m ? parseInt(m[1], 10) : 999999;
+}
+
+/* 把 YYYY-MM-DD 渲染成「10月4日 周日」 */
+function formatDateLabel(dateStr) {
+  if (!dateStr) return '未安排';
+  const p = String(dateStr).split('-');
+  if (p.length === 3) {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      return `${parseInt(p[1], 10)}月${parseInt(p[2], 10)}日 ${days[d.getDay()]}`;
+    }
+  }
+  return dateStr; /* 兼容旧数据 "Day 1" */
 }
 
 function sortItems(arr) {
@@ -579,7 +596,7 @@ function renderList() {
     html += `
       <section class="day-block">
         <div class="day-head">
-          <span class="day-badge">${esc(dateKey || '未安排')}</span>
+          <span class="day-badge">${esc(formatDateLabel(dateKey))}</span>
           <span class="day-count">${items.length} 项</span>
         </div>
         ${items.map(itemHTML).join('')}
@@ -662,9 +679,11 @@ function openEdit(id) {
   document.getElementById('editTitle').textContent = it ? '编辑行程' : '添加行程';
   document.getElementById('editHint').textContent = it
     ? '修改完点保存即可'
-    : '日期可填 Day 1，也可填 2026-10-01';
+    : '点击日期打开系统日历选择';
 
-  document.getElementById('fDate').value = it?.date || '';
+  const dateInput = document.getElementById('fDate');
+  /* 如果是旧数据 "Day 1"，日期框会留空，让用户重新选 */
+  dateInput.value = (it?.date && it.date.includes('-')) ? it.date : '';
   document.getElementById('fTime').value = it?.time || '';
 
   const sel = document.getElementById('fCat');
@@ -718,8 +737,10 @@ document.getElementById('fSave').addEventListener('click', () => {
     return;
   }
 
+  const dateVal = document.getElementById('fDate').value; /* 标准格式 YYYY-MM-DD */
+  
   const data = {
-    date: document.getElementById('fDate').value.trim(),
+    date: dateVal,
     time: document.getElementById('fTime').value,
     catId: document.getElementById('fCat').value || null,
     title,
